@@ -1,0 +1,105 @@
+#include <iostream>
+#include <unordered_map>
+#include <stack>
+#include <cctype>
+bool isOperator(char ch) {
+return ch == '+' || ch == '-' || ch == '*' || ch == '/';
+}
+bool isNumber(char ch) {
+return std::isdigit(ch);
+}
+bool isValidVariable(char ch) {
+return std::isalpha(ch) && std::islower(ch);
+}
+int precedence(char op) {
+if (op == '+' || op == '-') return 1;
+if (op == '*' || op == '/') return 2;
+return 0;
+}
+// Perform the calculation for two numbers and an operator
+int applyOp(int a, int b, char op) {
+switch(op) {
+case '+': return a + b;
+case '-': return a - b;
+case '*': return a * b;
+case '/': return b != 0 ? a / b : throw std::invalid_argument("Error: Division by zero");
+}
+return 0;
+}
+// Evaluate the expression using stacks (Shunting-yard algorithm for simplicity)
+int evaluateExpression(const std::string &expr, const std::unordered_map<char, int>& variables)
+{
+std::stack<int> values;
+std::stack<char> ops;
+for (size_t i = 0; i < expr.length(); i++) {
+
+char ch = expr[i];
+if (isNumber(ch)) {
+int value = 0;
+while (i < expr.length() && isNumber(expr[i])) {
+value = (value * 10) + (expr[i] - '0');
+i++;
+}
+values.push(value);
+i--;
+}
+else if (isValidVariable(ch)) {
+if (variables.find(ch) == variables.end())
+throw std::invalid_argument("Error: Undefined variable");
+values.push(variables.at(ch));
+}
+else if (isOperator(ch)) {
+while (!ops.empty() && precedence(ops.top()) >= precedence(ch)) {
+int b = values.top(); values.pop();
+int a = values.top(); values.pop();
+values.push(applyOp(a, b, ops.top()));
+ops.pop();
+}
+ops.push(ch);
+}
+else {
+throw std::invalid_argument("Error: Invalid character in expression");
+}
+}
+while (!ops.empty()) {
+int b = values.top(); values.pop();
+int a = values.top(); values.pop();
+values.push(applyOp(a, b, ops.top()));
+ops.pop();
+}
+return values.top();
+}
+int main() {
+std::unordered_map<char, int> variables;
+std::string expr;
+
+std::cout << "Enter expressions to calculate \n";
+std::cout << "Type 'exit' to quit.\n";
+while (true) {
+std::cout << "> ";
+std::getline(std::cin, expr);
+if (expr == "exit") break;
+try {
+size_t pos = expr.find('=');
+if (pos != std::string::npos) {
+// Assignment expression
+char var = expr[pos - 1];
+if (!isValidVariable(var)) {
+std::cerr << "Error: Invalid variable name\n";
+continue;
+}
+int value = std::stoi(expr.substr(pos + 1));
+variables[var] = value;
+std::cout << var << " = " << value << std::endl;
+} else {
+// Evaluation expression
+int result = evaluateExpression(expr, variables);
+std::cout << "Result: " << result << std::endl;
+}
+}
+catch (const std::exception &e) {
+std::cerr << e.what() << "\n";
+}
+}
+return 0;
+}
